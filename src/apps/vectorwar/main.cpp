@@ -12,6 +12,7 @@
 #include "../../../eos_secrets.h"
 
 EOS_HPlatform g_EOS_Platform_Handle;
+EOS_HConnect g_EOS_Connect_Handle;
 
 LRESULT CALLBACK
 MainWindowProc(HWND hwnd,
@@ -121,6 +122,15 @@ _EOS_Init()
     platformOptions.DeploymentId = __DEPLOYMENT_ID__;
     platformOptions.bIsServer = EOS_FALSE;
     g_EOS_Platform_Handle = EOS_Platform_Create(&platformOptions);
+    g_EOS_Connect_Handle = EOS_Platform_GetConnectInterface(g_EOS_Platform_Handle);
+}
+
+void
+_EOS_Login()
+{
+    EOS_Connect_LoginOptions loginOptions = {};
+    loginOptions.ApiVersion = EOS_CONNECT_LOGIN_API_LATEST;
+    EOS_Connect_Login(g_EOS_Connect_Handle,)
 }
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -146,6 +156,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
    _EOS_Init();
+   _EOS_Login();
 
    if (__argc < 3) {
       Syntax();
