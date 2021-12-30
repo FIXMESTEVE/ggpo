@@ -7,6 +7,7 @@
 #include "ggpo_perfmon.h"
 #include "eos_auth.h"
 #include "eos_connect.h"
+#include "eos_init.h"
 
 LRESULT CALLBACK
 MainWindowProc(HWND hwnd,
@@ -99,7 +100,11 @@ Syntax()
 void
 EOS_Test()
 {
-    EOS_Auth_Login()
+    EOS_InitializeOptions options = {};
+    options.ApiVersion = EOS_INITIALIZE_API_LATEST;
+    options.ProductName = "ggpo";
+    options.ProductVersion = "0.1";
+    EOS_Initialize(&options);
 }
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
