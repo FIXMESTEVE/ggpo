@@ -6,6 +6,7 @@
 #include "gdi_renderer.h"
 #include "vectorwar.h"
 #include "ggpo_perfmon.h"
+#include "eos_achievements.h"
 
 //#define SYNC_TEST    // test: turn on synctest
 #define MAX_PLAYERS     64

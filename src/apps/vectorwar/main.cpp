@@ -5,6 +5,8 @@
 #endif
 #include "vectorwar.h"
 #include "ggpo_perfmon.h"
+#include "eos_auth.h"
+#include "eos_connect.h"
 
 LRESULT CALLBACK
 MainWindowProc(HWND hwnd,
@@ -94,6 +96,12 @@ Syntax()
               L"Could not start", MB_OK);
 }
 
+void
+EOS_Test()
+{
+    EOS_Auth_Login()
+}
+
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE,
     _In_ LPWSTR,
@@ -116,6 +124,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 #if defined(_DEBUG)
    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
+   EOS_Test();
 
    if (__argc < 3) {
       Syntax();
