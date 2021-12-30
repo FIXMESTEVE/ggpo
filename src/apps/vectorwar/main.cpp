@@ -8,6 +8,10 @@
 #include "eos_auth.h"
 #include "eos_connect.h"
 #include "eos_init.h"
+#include "eos_sdk.h"
+#include "../../../eos_secrets.h"
+
+EOS_HPlatform g_EOS_Platform_Handle;
 
 LRESULT CALLBACK
 MainWindowProc(HWND hwnd,
@@ -73,6 +77,7 @@ RunMainLoop(HWND hwnd)
 
    start = next = now = timeGetTime();
    while(1) {
+      EOS_Platform_Tick(g_EOS_Platform_Handle);
       while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
          TranslateMessage(&msg); 
          DispatchMessage(&msg);
@@ -98,13 +103,24 @@ Syntax()
 }
 
 void
-EOS_Test()
+_EOS_Init()
 {
-    EOS_InitializeOptions options = {};
-    options.ApiVersion = EOS_INITIALIZE_API_LATEST;
-    options.ProductName = "ggpo";
-    options.ProductVersion = "0.1";
-    EOS_Initialize(&options);
+    EOS_InitializeOptions initOptions = {};
+    initOptions.ApiVersion = EOS_INITIALIZE_API_LATEST;
+    initOptions.ProductName = "ggpo";
+    initOptions.ProductVersion = "0.1";
+    EOS_Initialize(&initOptions);
+
+    EOS_Platform_Options platformOptions = {};
+    platformOptions.ApiVersion = EOS_PLATFORM_OPTIONS_API_LATEST;
+    platformOptions.ProductId = __PRODUCT_ID__;
+    platformOptions.SandboxId = __SANDBOX_ID__;
+    platformOptions.ClientCredentials.ClientId = __CLIENT_ID__;
+    platformOptions.ClientCredentials.ClientSecret = __CLIENT_SECRET__;
+    platformOptions.EncryptionKey = __ENCRYPTION_KEY__;
+    platformOptions.DeploymentId = __DEPLOYMENT_ID__;
+    platformOptions.bIsServer = EOS_FALSE;
+    g_EOS_Platform_Handle = EOS_Platform_Create(&platformOptions);
 }
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -129,7 +145,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 #if defined(_DEBUG)
    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
-   EOS_Test();
+   _EOS_Init();
 
    if (__argc < 3) {
       Syntax();
