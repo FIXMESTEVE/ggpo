@@ -15,12 +15,18 @@
 #include <string>
 #include "../../../eos_secrets.h"
 
+#include <iostream>
+#include <sstream>
+
+#define WIN32_LEAN_AND_MEAN
+
+
 EOS_HPlatform g_EOS_Platform_Handle;
 EOS_HConnect g_EOS_Connect_Handle;
 EOS_HLobby g_EOS_Lobby_Handle;
 EOS_ProductUserId g_EOS_LocalUserId;
 bool g_bEOS_Connect_Succeeded = false;
-
+bool g_bEOS_IsInLobby = false;
 LRESULT CALLBACK
 MainWindowProc(HWND hwnd,
                UINT uMsg,
@@ -82,6 +88,21 @@ _Execute_EOS_Lobby_CreateLobby()
 {
     g_EOS_Lobby_Handle = EOS_Platform_GetLobbyInterface(g_EOS_Platform_Handle);
 
+    EOS_Lobby_AddNotifyLobbyUpdateReceivedOptions addNotifyLobbyUpdateReceivedOptions = {};
+    addNotifyLobbyUpdateReceivedOptions.ApiVersion = EOS_LOBBY_ADDNOTIFYLOBBYUPDATERECEIVED_API_LATEST;
+    EOS_Lobby_AddNotifyLobbyUpdateReceived(g_EOS_Lobby_Handle, &addNotifyLobbyUpdateReceivedOptions, NULL, [](const EOS_Lobby_LobbyUpdateReceivedCallbackInfo* info) {
+        /*std::wostringstream os_;
+        os_ << std::to_string((int)info).c_str() << std::endl;
+        OutputDebugString(os_.str().c_str());*/
+
+        EOS_HLobbyDetails lobbyDetails = {};
+        EOS_Lobby_CopyLobbyDetailsHandleOptions detailsOptions = {};
+        detailsOptions.ApiVersion = EOS_LOBBY_COPYLOBBYDETAILSHANDLE_API_LATEST;
+        detailsOptions.LocalUserId = g_EOS_LocalUserId;
+        detailsOptions.LobbyId = info->LobbyId;
+        EOS_Lobby_CopyLobbyDetailsHandle(g_EOS_Lobby_Handle, &detailsOptions, &lobbyDetails);
+    });
+
     EOS_Lobby_CreateLobbyOptions createLobbyOptions = {};
     createLobbyOptions.ApiVersion = EOS_LOBBY_CREATELOBBY_API_LATEST;
     createLobbyOptions.PermissionLevel = EOS_ELobbyPermissionLevel::EOS_LPL_PUBLICADVERTISED;
@@ -91,9 +112,43 @@ _Execute_EOS_Lobby_CreateLobby()
     createLobbyOptions.bDisableHostMigration = false;
     createLobbyOptions.bEnableRTCRoom = false;
     createLobbyOptions.LocalRTCOptions = NULL;
-    createLobbyOptions.BucketId = "wtf";
+    createLobbyOptions.BucketId = "wtf"; // What is a Bucket Id?
     EOS_Lobby_CreateLobby(g_EOS_Lobby_Handle, &createLobbyOptions, NULL, [](const EOS_Lobby_CreateLobbyCallbackInfo* info) {
-        printf("%d", info->ResultCode);
+        if (info->ResultCode == EOS_EResult::EOS_Success) {
+            g_bEOS_IsInLobby = true;
+
+            std::wostringstream os_;
+            os_ << L"EOS_Lobby_CreateLobby Result Code: " << std::to_string((int)info->ResultCode).c_str() << std::endl;
+            OutputDebugString(os_.str().c_str());
+
+            EOS_HLobbyDetails lobbyDetails = {};
+            EOS_Lobby_CopyLobbyDetailsHandleOptions detailsOptions = {};
+            detailsOptions.ApiVersion = EOS_LOBBY_COPYLOBBYDETAILSHANDLE_API_LATEST;
+            detailsOptions.LocalUserId = g_EOS_LocalUserId;
+            detailsOptions.LobbyId = info->LobbyId;
+            EOS_Lobby_CopyLobbyDetailsHandle(g_EOS_Lobby_Handle, &detailsOptions, &lobbyDetails);
+
+            EOS_LobbyDetails_Info* lobbyDetailsInfo;
+            EOS_LobbyDetails_CopyInfoOptions copyOptions = {};
+            copyOptions.ApiVersion = EOS_LOBBYDETAILS_COPYINFO_API_LATEST;
+            EOS_LobbyDetails_CopyInfo(lobbyDetails, &copyOptions, &lobbyDetailsInfo);
+
+            EOS_LobbyDetails_GetMemberCountOptions getMemberCountOptions = {};
+            getMemberCountOptions.ApiVersion = EOS_LOBBYDETAILS_GETMEMBERCOUNT_API_LATEST;
+            uint32_t memberCount = EOS_LobbyDetails_GetMemberCount(lobbyDetails, &getMemberCountOptions);
+
+            for (uint32_t i = 0; i < memberCount; i++) {
+                EOS_LobbyDetails_GetMemberByIndexOptions getMemberByIndexOptions = {};
+                getMemberByIndexOptions.ApiVersion = EOS_LOBBYDETAILS_GETMEMBERBYINDEX_API_LATEST;
+                getMemberByIndexOptions.MemberIndex = i;
+                EOS_ProductUserId userId = EOS_LobbyDetails_GetMemberByIndex(lobbyDetails, &getMemberByIndexOptions);
+                std::wostringstream os2_;
+                os2_ << L"User number " << std::to_string(i).c_str() << L", ID: " << userId << std::endl;
+                OutputDebugString(os2_.str().c_str());
+            }
+
+            EOS_LobbyDetails_Info_Release(lobbyDetailsInfo);
+        }
     });
 }
 
@@ -105,11 +160,6 @@ RunMainLoop(HWND hwnd)
 
    start = next = now = timeGetTime();
    while(1) {
-      EOS_Platform_Tick(g_EOS_Platform_Handle);
-      if (g_bEOS_Connect_Succeeded) {
-          _Execute_EOS_Lobby_CreateLobby();
-      }
-
       while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
          TranslateMessage(&msg); 
          DispatchMessage(&msg);
@@ -120,6 +170,10 @@ RunMainLoop(HWND hwnd)
       now = timeGetTime();
       VectorWar_Idle(max(0, next - now - 1));
       if (now >= next) {
+         EOS_Platform_Tick(g_EOS_Platform_Handle);
+         if (g_bEOS_Connect_Succeeded && !g_bEOS_IsInLobby) {
+             _Execute_EOS_Lobby_CreateLobby();
+         }
          VectorWar_RunFrame(hwnd);
          next = now + (1000 / 60);
       }
@@ -134,10 +188,6 @@ Syntax()
               L"Could not start", MB_OK);
 }
 
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <iostream>
-#include <sstream>
 void
 _Execute_EOS_Init()
 {
@@ -185,9 +235,6 @@ _Execute_EOS_Login()
     loginOptions.UserLoginInfo = &loginInfos;
     EOS_Connect_Login(g_EOS_Connect_Handle, &loginOptions, NULL, [](const EOS_Connect_LoginCallbackInfo* info) {
         if (info->ResultCode == EOS_EResult::EOS_Success) {
-            MessageBox(NULL,
-                L"EOS_Connect_Login succeeded!\n",
-                L"Success!", MB_OK);
             g_bEOS_Connect_Succeeded = true;
             g_EOS_LocalUserId = info->LocalUserId;
         }
