@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <stdio.h>
+#include <functional>
 #if defined(_DEBUG)
 #   include <crtdbg.h>
 #endif
@@ -104,7 +105,7 @@ Syntax()
 }
 
 void
-_EOS_Init()
+_Execute_EOS_Init()
 {
     EOS_InitializeOptions initOptions = {};
     initOptions.ApiVersion = EOS_INITIALIZE_API_LATEST;
@@ -126,11 +127,43 @@ _EOS_Init()
 }
 
 void
-_EOS_Login()
+_Execute_EOS_Login()
 {
     EOS_Connect_LoginOptions loginOptions = {};
+    EOS_Connect_Credentials credentials = {};
+    EOS_Connect_UserLoginInfo loginInfos = {};
+
+    credentials.Type = EOS_EExternalCredentialType::EOS_ECT_DEVICEID_ACCESS_TOKEN;
+    credentials.Token = NULL; // For DeviceID type login, token must be null.
+    credentials.ApiVersion = EOS_CONNECT_CREDENTIALS_API_LATEST;
+
+    loginInfos.ApiVersion = EOS_CONNECT_USERLOGININFO_API_LATEST;
+    loginInfos.DisplayName = "UnnamedPlayer";
+
     loginOptions.ApiVersion = EOS_CONNECT_LOGIN_API_LATEST;
-    EOS_Connect_Login(g_EOS_Connect_Handle,)
+    loginOptions.Credentials = &credentials;
+    loginOptions.UserLoginInfo = &loginInfos;
+    EOS_Connect_Login(g_EOS_Connect_Handle, &loginOptions, NULL, [](const EOS_Connect_LoginCallbackInfo* info) {
+        if (info->ResultCode == EOS_EResult::EOS_Success) {
+            MessageBox(NULL,
+                L"EOS_Connect_Login succeeded!\n",
+                L"Success!", MB_OK);
+        }
+    });
+}
+
+void
+_Execute_EOS_Connect_CreateDeviceId()
+{
+    EOS_Connect_CreateDeviceIdOptions createDeviceIdOptions = {};
+    createDeviceIdOptions.ApiVersion = EOS_CONNECT_CREATEDEVICEID_API_LATEST;
+    createDeviceIdOptions.DeviceModel = "Windows PC";
+    EOS_Connect_CreateDeviceId(g_EOS_Connect_Handle, &createDeviceIdOptions, NULL, [](const EOS_Connect_CreateDeviceIdCallbackInfo* info) {
+        if (info->ResultCode == EOS_EResult::EOS_Success || info->ResultCode == EOS_EResult::EOS_DuplicateNotAllowed) {
+            // Success!
+            _Execute_EOS_Login();
+        }
+    });
 }
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -155,8 +188,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 #if defined(_DEBUG)
    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
-   _EOS_Init();
-   _EOS_Login();
+   _Execute_EOS_Init();
+   _Execute_EOS_Connect_CreateDeviceId();
 
    if (__argc < 3) {
       Syntax();
