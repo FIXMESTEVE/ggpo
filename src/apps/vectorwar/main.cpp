@@ -27,6 +27,8 @@ EOS_HLobby g_EOS_Lobby_Handle;
 EOS_ProductUserId g_EOS_LocalUserId;
 bool g_bEOS_Connect_Succeeded = false;
 bool g_bEOS_IsInLobby = false;
+bool g_bEOS_LobbyCreate_Requested = false;
+
 LRESULT CALLBACK
 MainWindowProc(HWND hwnd,
                UINT uMsg,
@@ -86,6 +88,8 @@ CreateMainWindow(HINSTANCE hInstance)
 void
 _Execute_EOS_Lobby_CreateLobby()
 {
+    g_bEOS_LobbyCreate_Requested = true;
+
     g_EOS_Lobby_Handle = EOS_Platform_GetLobbyInterface(g_EOS_Platform_Handle);
 
     EOS_Lobby_AddNotifyLobbyUpdateReceivedOptions addNotifyLobbyUpdateReceivedOptions = {};
@@ -171,7 +175,7 @@ RunMainLoop(HWND hwnd)
       VectorWar_Idle(max(0, next - now - 1));
       if (now >= next) {
          EOS_Platform_Tick(g_EOS_Platform_Handle);
-         if (g_bEOS_Connect_Succeeded && !g_bEOS_IsInLobby) {
+         if (g_bEOS_Connect_Succeeded && !g_bEOS_IsInLobby && !g_bEOS_LobbyCreate_Requested) {
              _Execute_EOS_Lobby_CreateLobby();
          }
          VectorWar_RunFrame(hwnd);
