@@ -24,12 +24,45 @@
 EOS_HPlatform g_EOS_Platform_Handle;
 EOS_HConnect g_EOS_Connect_Handle;
 EOS_HLobby g_EOS_Lobby_Handle;
+EOS_HLobbySearch g_EOS_hLobbySearch;
 EOS_ProductUserId g_EOS_LocalUserId;
 bool g_bEOS_Connect_Succeeded = false;
 bool g_bEOS_IsInLobby = false;
 bool g_bEOS_LobbyCreate_Requested = false;
 bool g_bEOS_LobbySearch_Requested = false;
 bool g_bMustCreateLobby = false;
+
+void
+_Print_Lobby_Members(EOS_LobbyId lobbyId)
+{
+    EOS_HLobbyDetails lobbyDetails = {};
+    EOS_Lobby_CopyLobbyDetailsHandleOptions detailsOptions = {};
+    detailsOptions.ApiVersion = EOS_LOBBY_COPYLOBBYDETAILSHANDLE_API_LATEST;
+    detailsOptions.LocalUserId = g_EOS_LocalUserId;
+    detailsOptions.LobbyId = lobbyId;
+    EOS_Lobby_CopyLobbyDetailsHandle(g_EOS_Lobby_Handle, &detailsOptions, &lobbyDetails);
+
+    EOS_LobbyDetails_Info* lobbyDetailsInfo;
+    EOS_LobbyDetails_CopyInfoOptions copyOptions = {};
+    copyOptions.ApiVersion = EOS_LOBBYDETAILS_COPYINFO_API_LATEST;
+    EOS_LobbyDetails_CopyInfo(lobbyDetails, &copyOptions, &lobbyDetailsInfo);
+
+    EOS_LobbyDetails_GetMemberCountOptions getMemberCountOptions = {};
+    getMemberCountOptions.ApiVersion = EOS_LOBBYDETAILS_GETMEMBERCOUNT_API_LATEST;
+    uint32_t memberCount = EOS_LobbyDetails_GetMemberCount(lobbyDetails, &getMemberCountOptions);
+
+    for (uint32_t i = 0; i < memberCount; i++) {
+        EOS_LobbyDetails_GetMemberByIndexOptions getMemberByIndexOptions = {};
+        getMemberByIndexOptions.ApiVersion = EOS_LOBBYDETAILS_GETMEMBERBYINDEX_API_LATEST;
+        getMemberByIndexOptions.MemberIndex = i;
+        EOS_ProductUserId userId = EOS_LobbyDetails_GetMemberByIndex(lobbyDetails, &getMemberByIndexOptions);
+        std::wostringstream os2_;
+        os2_ << L"User number " << std::to_string(i).c_str() << L", ID: " << userId << std::endl;
+        OutputDebugString(os2_.str().c_str());
+    }
+
+    EOS_LobbyDetails_Info_Release(lobbyDetailsInfo);
+}
 
 LRESULT CALLBACK
 MainWindowProc(HWND hwnd,
@@ -92,36 +125,49 @@ _Execute_EOS_Lobby_Search_And_Join_Lobby()
 {
     g_bEOS_LobbySearch_Requested = true;
 
-    g_EOS_Lobby_Handle = EOS_Platform_GetLobbyInterface(g_EOS_Platform_Handle);
-
-    EOS_HLobbySearch hLobbySearch;
     EOS_Lobby_CreateLobbySearchOptions oCreateLobbySearch = {};
     oCreateLobbySearch.ApiVersion = EOS_LOBBY_CREATELOBBYSEARCH_API_LATEST;
     oCreateLobbySearch.MaxResults = 10;
-    EOS_Lobby_CreateLobbySearch(g_EOS_Lobby_Handle, &oCreateLobbySearch, &hLobbySearch);
+    EOS_Lobby_CreateLobbySearch(g_EOS_Lobby_Handle, &oCreateLobbySearch, &g_EOS_hLobbySearch);
 
     EOS_LobbySearch_SetParameterOptions oSetParameter = {};
     oSetParameter.ApiVersion = EOS_LOBBYSEARCH_SETPARAMETER_API_LATEST;
-    oSetParameter.ComparisonOp = EOS_EComparisonOp::EOS_CO_ANYOF;
+    oSetParameter.ComparisonOp = EOS_EComparisonOp::EOS_CO_EQUAL;
     EOS_Lobby_AttributeData attributeData = {};
     attributeData.ApiVersion = EOS_LOBBY_ATTRIBUTEDATA_API_LATEST;
     attributeData.Key = "Name";
     attributeData.Value.AsUtf8 = "GGPO Test";
     attributeData.ValueType = EOS_ELobbyAttributeType::EOS_AT_STRING;
     oSetParameter.Parameter = &attributeData;
-    EOS_LobbySearch_SetParameter(hLobbySearch, &oSetParameter);
+    EOS_LobbySearch_SetParameter(g_EOS_hLobbySearch, &oSetParameter);
 
     EOS_LobbySearch_FindOptions oFind = {};
     oFind.ApiVersion = EOS_LOBBYSEARCH_FIND_API_LATEST;
     oFind.LocalUserId = g_EOS_LocalUserId;
-    EOS_LobbySearch_Find(hLobbySearch, &oFind, hLobbySearch, [](const EOS_LobbySearch_FindCallbackInfo* data) {
+    EOS_LobbySearch_Find(g_EOS_hLobbySearch, &oFind, NULL, [](const EOS_LobbySearch_FindCallbackInfo* data) {
         EOS_LobbySearch_GetSearchResultCountOptions oGetSearchResultCount = {};
         oGetSearchResultCount.ApiVersion = EOS_LOBBYSEARCH_GETSEARCHRESULTCOUNT_API_LATEST;
-        uint32_t count = EOS_LobbySearch_GetSearchResultCount((EOS_HLobbySearch)data->ClientData, &oGetSearchResultCount);
+        uint32_t count = EOS_LobbySearch_GetSearchResultCount(g_EOS_hLobbySearch, &oGetSearchResultCount);
 
         std::wostringstream os2_;
-        os2_ << L"Found " << std::to_string(count).c_str() << L" lobbies." << std::endl;
+        os2_ << L"EOS_LobbySearch_Find Result Code: " << std::to_string((int)data->ResultCode).c_str() << ". Found " << std::to_string(count).c_str() << L" lobbies." << std::endl;
         OutputDebugString(os2_.str().c_str());
+
+        if (count > 0) { // join lobby
+            EOS_HLobbyDetails hLobbyDetails;
+            EOS_LobbySearch_CopySearchResultByIndexOptions oCopySearchResultByIndex = {};
+            oCopySearchResultByIndex.ApiVersion = EOS_LOBBYSEARCH_COPYSEARCHRESULTBYINDEX_API_LATEST;
+            oCopySearchResultByIndex.LobbyIndex = 0;
+            EOS_LobbySearch_CopySearchResultByIndex(g_EOS_hLobbySearch, &oCopySearchResultByIndex, &hLobbyDetails);
+
+            EOS_Lobby_JoinLobbyOptions oJoinLobby = {};
+            oJoinLobby.ApiVersion = EOS_LOBBY_JOINLOBBY_API_LATEST;
+            oJoinLobby.LocalUserId = g_EOS_LocalUserId;
+            oJoinLobby.LobbyDetailsHandle = hLobbyDetails;
+            EOS_Lobby_JoinLobby(g_EOS_Lobby_Handle, &oJoinLobby, NULL, [](const EOS_Lobby_JoinLobbyCallbackInfo* data) {
+                _Print_Lobby_Members(data->LobbyId);
+            });
+        }
     });
 }
 
@@ -130,21 +176,10 @@ _Execute_EOS_Lobby_CreateLobby()
 {
     g_bEOS_LobbyCreate_Requested = true;
 
-    g_EOS_Lobby_Handle = EOS_Platform_GetLobbyInterface(g_EOS_Platform_Handle);
-
     EOS_Lobby_AddNotifyLobbyUpdateReceivedOptions addNotifyLobbyUpdateReceivedOptions = {};
     addNotifyLobbyUpdateReceivedOptions.ApiVersion = EOS_LOBBY_ADDNOTIFYLOBBYUPDATERECEIVED_API_LATEST;
     EOS_Lobby_AddNotifyLobbyUpdateReceived(g_EOS_Lobby_Handle, &addNotifyLobbyUpdateReceivedOptions, NULL, [](const EOS_Lobby_LobbyUpdateReceivedCallbackInfo* info) {
-        /*std::wostringstream os_;
-        os_ << std::to_string((int)info).c_str() << std::endl;
-        OutputDebugString(os_.str().c_str());*/
-
-        EOS_HLobbyDetails lobbyDetails = {};
-        EOS_Lobby_CopyLobbyDetailsHandleOptions detailsOptions = {};
-        detailsOptions.ApiVersion = EOS_LOBBY_COPYLOBBYDETAILSHANDLE_API_LATEST;
-        detailsOptions.LocalUserId = g_EOS_LocalUserId;
-        detailsOptions.LobbyId = info->LobbyId;
-        EOS_Lobby_CopyLobbyDetailsHandle(g_EOS_Lobby_Handle, &detailsOptions, &lobbyDetails);
+        _Print_Lobby_Members(info->LobbyId);
     });
 
     EOS_Lobby_CreateLobbyOptions createLobbyOptions = {};
@@ -187,35 +222,13 @@ _Execute_EOS_Lobby_CreateLobby()
             EOS_Lobby_UpdateLobbyOptions oUpdateLobby = {};
             oUpdateLobby.ApiVersion = EOS_LOBBY_UPDATELOBBY_API_LATEST;
             oUpdateLobby.LobbyModificationHandle = hLobbyModification;
-            EOS_Lobby_UpdateLobby(g_EOS_Lobby_Handle, &oUpdateLobby, NULL, NULL);
+            EOS_Lobby_UpdateLobby(g_EOS_Lobby_Handle, &oUpdateLobby, NULL, [](const EOS_Lobby_UpdateLobbyCallbackInfo* data) {
+                std::wostringstream os3_;
+                os3_ << L"EOS_Lobby_UpdateLobby Result Code: " << std::to_string((int)data->ResultCode).c_str() << std::endl;
+                OutputDebugString(os3_.str().c_str());
+            });
 
-            EOS_HLobbyDetails lobbyDetails = {};
-            EOS_Lobby_CopyLobbyDetailsHandleOptions detailsOptions = {};
-            detailsOptions.ApiVersion = EOS_LOBBY_COPYLOBBYDETAILSHANDLE_API_LATEST;
-            detailsOptions.LocalUserId = g_EOS_LocalUserId;
-            detailsOptions.LobbyId = info->LobbyId;
-            EOS_Lobby_CopyLobbyDetailsHandle(g_EOS_Lobby_Handle, &detailsOptions, &lobbyDetails);
-
-            EOS_LobbyDetails_Info* lobbyDetailsInfo;
-            EOS_LobbyDetails_CopyInfoOptions copyOptions = {};
-            copyOptions.ApiVersion = EOS_LOBBYDETAILS_COPYINFO_API_LATEST;
-            EOS_LobbyDetails_CopyInfo(lobbyDetails, &copyOptions, &lobbyDetailsInfo);
-
-            EOS_LobbyDetails_GetMemberCountOptions getMemberCountOptions = {};
-            getMemberCountOptions.ApiVersion = EOS_LOBBYDETAILS_GETMEMBERCOUNT_API_LATEST;
-            uint32_t memberCount = EOS_LobbyDetails_GetMemberCount(lobbyDetails, &getMemberCountOptions);
-
-            for (uint32_t i = 0; i < memberCount; i++) {
-                EOS_LobbyDetails_GetMemberByIndexOptions getMemberByIndexOptions = {};
-                getMemberByIndexOptions.ApiVersion = EOS_LOBBYDETAILS_GETMEMBERBYINDEX_API_LATEST;
-                getMemberByIndexOptions.MemberIndex = i;
-                EOS_ProductUserId userId = EOS_LobbyDetails_GetMemberByIndex(lobbyDetails, &getMemberByIndexOptions);
-                std::wostringstream os2_;
-                os2_ << L"User number " << std::to_string(i).c_str() << L", ID: " << userId << std::endl;
-                OutputDebugString(os2_.str().c_str());
-            }
-
-            EOS_LobbyDetails_Info_Release(lobbyDetailsInfo);
+            _Print_Lobby_Members(info->LobbyId);
         }
     });
 }
@@ -310,6 +323,7 @@ _Execute_EOS_Login()
         if (info->ResultCode == EOS_EResult::EOS_Success) {
             g_bEOS_Connect_Succeeded = true;
             g_EOS_LocalUserId = info->LocalUserId;
+            g_EOS_Lobby_Handle = EOS_Platform_GetLobbyInterface(g_EOS_Platform_Handle);
         }
     });
 }
