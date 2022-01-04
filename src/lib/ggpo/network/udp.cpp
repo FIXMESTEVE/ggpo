@@ -8,6 +8,8 @@
 #include "types.h"
 #include "udp.h"
 
+#define EOS
+
 SOCKET
 CreateSocket(uint16 bind_port, int retries)
 {
@@ -64,8 +66,23 @@ Udp::Init(uint16 port, Poll *poll, Callbacks *callbacks)
 }
 
 void
-Udp::SendTo(char *buffer, int len, int flags, struct sockaddr *dst, int destlen)
+Udp::SendTo(char *buffer, int len, int flags, EOS_ProductUserId from, EOS_ProductUserId to)
 {
+#if defined(EOS)
+    EOS_P2P_SocketId socketId = { EOS_P2P_SOCKETID_API_LATEST, "JAMADAAAAAAAAAAAAAAAAAAAAAAAAAAA" };
+
+    EOS_P2P_SendPacketOptions oSendPacketOptions = {};
+    oSendPacketOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
+    oSendPacketOptions.bAllowDelayedDelivery = false;
+    oSendPacketOptions.Channel = 0;
+    oSendPacketOptions.Data = buffer;
+    oSendPacketOptions.DataLengthBytes = len;
+    oSendPacketOptions.LocalUserId = from;
+    oSendPacketOptions.Reliability = EOS_EPacketReliability::EOS_PR_UnreliableUnordered;
+    oSendPacketOptions.RemoteUserId = to;
+    oSendPacketOptions.SocketId = &socketId;
+    EOS_P2P_SendPacket(_hP2P, &oSendPacketOptions);
+#else
    struct sockaddr_in *to = (struct sockaddr_in *)dst;
 
    int res = sendto(_socket, buffer, len, flags, dst, destlen);
@@ -76,6 +93,7 @@ Udp::SendTo(char *buffer, int len, int flags, struct sockaddr *dst, int destlen)
    }
    char dst_ip[1024];
    Log("sent packet length %d to %s:%d (ret:%d).\n", len, inet_ntop(AF_INET, (void *)&to->sin_addr, dst_ip, ARRAY_SIZE(dst_ip)), ntohs(to->sin_port), res);
+#endif
 }
 
 bool

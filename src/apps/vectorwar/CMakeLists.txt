@@ -12,11 +12,6 @@ add_common_flags(VectorWar)
 # Change the character set to unicode.
 add_definitions(-D_UNICODE -DUNICODE)
 
-# Epic Online Services SDK
-include_directories(C:/Work/EOS_SDK/SDK/Include)
-include_directories(C:/Work/EOS_SDK/SDK/Include/Windows)
-find_library(EOS_SDK EOSSDK-Win32-Shipping "C:/Work/EOS_SDK/SDK/Lib")
-
 # Link against GGPO, winmm (Windows Multimedia API), and ws2_32 (Winsock).
 target_link_libraries(VectorWar LINK_PUBLIC GGPO winmm.lib ws2_32.lib ${EOS_SDK})
 target_compile_options(VectorWar PRIVATE "/W4" "/WX")

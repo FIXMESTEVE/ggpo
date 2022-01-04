@@ -13,6 +13,8 @@
 #include "ggponet.h"
 #include "ring_buffer.h"
 
+#include "eos_p2p.h"
+
 #define MAX_UDP_ENDPOINTS     16
 
 static const int MAX_UDP_PACKET_SIZE = 4096;
@@ -31,6 +33,7 @@ public:
       virtual void OnMsg(sockaddr_in &from, UdpMsg *msg, int len) = 0;
    };
 
+   EOS_HP2P _hP2P;
 
 protected:
    void Log(const char *fmt, ...);
@@ -40,7 +43,7 @@ public:
 
    void Init(uint16 port, Poll *p, Callbacks *callbacks);
    
-   void SendTo(char *buffer, int len, int flags, struct sockaddr *dst, int destlen);
+   void SendTo(char *buffer, int len, int flags, EOS_ProductUserId from, EOS_ProductUserId to);
 
    virtual bool OnLoopPoll(void *cookie);
 

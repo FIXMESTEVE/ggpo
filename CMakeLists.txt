@@ -9,6 +9,11 @@ set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
 include(src/cmake/properties.cmake)
 include(src/cmake/helper_methods.cmake)
 
+# Epic Online Services SDK
+include_directories(C:/Work/EOS_SDK/SDK/Include)
+include_directories(C:/Work/EOS_SDK/SDK/Include/Windows)
+find_library(EOS_SDK EOSSDK-Win32-Shipping "C:/Work/EOS_SDK/SDK/Lib")
+
 if(WIN32)
 	## Prevent the CMake trying to install GGPO in Program Files on Windows
 	if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
