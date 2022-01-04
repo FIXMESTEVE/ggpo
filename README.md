@@ -2,7 +2,7 @@
 
 ## What is GGPO-EOS ?
 
-GGPO-EOS is a version of the GGPO Rollback Netcode library that uses Epic Online Services for its P2P communications, making it suitable for cross-play.
+GGPO-EOS is a fork of the GGPO Rollback Netcode library that uses Epic Online Services for its P2P communications, making it suitable for cross-play.
 
 ## What is GGPO ?
 
