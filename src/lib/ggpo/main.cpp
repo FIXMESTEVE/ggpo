@@ -41,13 +41,17 @@ ggpo_start_session(GGPOSession **session,
                    const char *game,
                    int num_players,
                    int input_size,
-                   unsigned short localport)
+                   unsigned short localport,
+                   EOS_ProductUserId me,
+                   EOS_HPlatform hPlatform)
 {
    *session= (GGPOSession *)new Peer2PeerBackend(cb,
                                                  game,
                                                  localport,
                                                  num_players,
-                                                 input_size);
+                                                 input_size,
+                                                 me,
+                                                 hPlatform);
    return GGPO_OK;
 }
 
@@ -193,16 +197,14 @@ GGPOErrorCode ggpo_start_spectating(GGPOSession **session,
                                     int num_players,
                                     int input_size,
                                     unsigned short local_port,
-                                    char *host_ip,
-                                    unsigned short host_port)
+                                    EOS_ProductUserId host_user)
 {
    *session= (GGPOSession *)new SpectatorBackend(cb,
                                                  game,
                                                  local_port,
                                                  num_players,
                                                  input_size,
-                                                 host_ip,
-                                                 host_port);
+                                                 host_user);
    return GGPO_OK;
 }
 

@@ -30,10 +30,11 @@ public:
 
    struct Callbacks {
       virtual ~Callbacks() { }
-      virtual void OnMsg(sockaddr_in &from, UdpMsg *msg, int len) = 0;
+      virtual void OnMsg(EOS_ProductUserId &from, UdpMsg *msg, int len) = 0;
    };
 
    EOS_HP2P _hP2P;
+   EOS_ProductUserId _localProductUserId; //TODO: init this somewhere??
 
 protected:
    void Log(const char *fmt, ...);
@@ -41,9 +42,9 @@ protected:
 public:
    Udp();
 
-   void Init(uint16 port, Poll *p, Callbacks *callbacks);
+   void Init(uint16 port, Poll *p, Callbacks *callbacks, EOS_HPlatform hPlatform, EOS_ProductUserId localProductUserId);
    
-   void SendTo(char *buffer, int len, int flags, EOS_ProductUserId from, EOS_ProductUserId to);
+   void SendTo(char *buffer, int len, int flags, EOS_ProductUserId to);
 
    virtual bool OnLoopPoll(void *cookie);
 

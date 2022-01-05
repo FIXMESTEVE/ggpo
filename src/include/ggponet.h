@@ -13,6 +13,8 @@ extern "C" {
 #endif
 
 #include <stdarg.h>
+#include "eos_common.h"
+#include "eos_types.h"
 
 // On windows, export at build time and import at runtime.
 // ELF systems don't need an explicit export/import.
@@ -80,6 +82,7 @@ typedef struct GGPOPlayer {
       struct {
          char           ip_address[32];
          unsigned short port;
+         EOS_ProductUserId _EOS_ProductUserId;
       } remote;
    } u;
 } GGPOPlayer;
@@ -324,7 +327,9 @@ GGPO_API GGPOErrorCode __cdecl ggpo_start_session(GGPOSession **session,
                                                   const char *game,
                                                   int num_players,
                                                   int input_size,
-                                                  unsigned short localport);
+                                                  unsigned short localport,
+                                                  EOS_ProductUserId me,
+                                                  EOS_HPlatform hPlatform);
 
 
 /*
@@ -405,8 +410,7 @@ GGPO_API GGPOErrorCode __cdecl ggpo_start_spectating(GGPOSession **session,
                                                      int num_players,
                                                      int input_size,
                                                      unsigned short local_port,
-                                                     char *host_ip,
-                                                     unsigned short host_port);
+                                                     EOS_ProductUserId host_user);
 
 /*
  * ggpo_close_session --

@@ -65,17 +65,17 @@ void
 UdpProtocol::Init(Udp *udp,
                   Poll &poll,
                   int queue,
-                  char *ip,
-                  u_short port,
+                  EOS_ProductUserId peer,
                   UdpMsg::connect_status *status)
 {  
    _udp = udp;
    _queue = queue;
    _local_connect_status = status;
 
-   _peer_addr.sin_family = AF_INET;
-   _peer_addr.sin_port = htons(port);
-   inet_pton(AF_INET, ip, &_peer_addr.sin_addr.s_addr);
+   _peer_addr = peer;
+   //_peer_addr.sin_family = AF_INET;
+   //_peer_addr.sin_port = htons(port);
+   //inet_pton(AF_INET, ip, &_peer_addr.sin_addr.s_addr);
 
    do {
       _magic_number = (uint16)rand();
@@ -288,14 +288,13 @@ UdpProtocol::SendMsg(UdpMsg *msg)
 }
 
 bool
-UdpProtocol::HandlesMsg(sockaddr_in &from,
+UdpProtocol::HandlesMsg(EOS_ProductUserId &from,
                         UdpMsg *msg)
 {
    if (!_udp) {
       return false;
    }
-   return _peer_addr.sin_addr.S_un.S_addr == from.sin_addr.S_un.S_addr &&
-          _peer_addr.sin_port == from.sin_port;
+   return _peer_addr == from; //TODO: ...I'm pretty sure this won't work
 }
 
 void
@@ -732,10 +731,9 @@ UdpProtocol::PumpSendQueue()
          _oo_packet.msg = entry.msg;
          _oo_packet.dest_addr = entry.dest_addr;
       } else {
-         ASSERT(entry.dest_addr.sin_addr.s_addr);
+         //ASSERT(entry.dest_addr.sin_addr.s_addr);
 
-         _udp->SendTo((char *)entry.msg, entry.msg->PacketSize(), 0,
-                      (struct sockaddr *)&entry.dest_addr, sizeof entry.dest_addr);
+         _udp->SendTo((char *)entry.msg, entry.msg->PacketSize(), 0, entry.dest_addr);
 
          delete entry.msg;
       }
@@ -743,8 +741,7 @@ UdpProtocol::PumpSendQueue()
    }
    if (_oo_packet.msg && _oo_packet.send_time < Platform::GetCurrentTimeMS()) {
       Log("sending rogue oop!");
-      _udp->SendTo((char *)_oo_packet.msg, _oo_packet.msg->PacketSize(), 0,
-                     (struct sockaddr *)&_oo_packet.dest_addr, sizeof _oo_packet.dest_addr);
+      _udp->SendTo((char *)_oo_packet.msg, _oo_packet.msg->PacketSize(), 0, _oo_packet.dest_addr);
 
       delete _oo_packet.msg;
       _oo_packet.msg = NULL;

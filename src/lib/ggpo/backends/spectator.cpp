@@ -12,8 +12,7 @@ SpectatorBackend::SpectatorBackend(GGPOSessionCallbacks *cb,
                                    uint16 localport,
                                    int num_players,
                                    int input_size,
-                                   char *hostip,
-                                   u_short hostport) :
+                                   EOS_ProductUserId host_user) :
    _num_players(num_players),
    _input_size(input_size),
    _next_input_to_send(0)
@@ -28,18 +27,18 @@ SpectatorBackend::SpectatorBackend(GGPOSessionCallbacks *cb,
    /*
     * Initialize the UDP port
     */
-   _udp.Init(localport, &_poll, this);
+   //_udp.Init(localport, &_poll, this);
 
-   /*
-    * Init the host endpoint
-    */
-   _host.Init(&_udp, _poll, 0, hostip, hostport, NULL);
-   _host.Synchronize();
+   ///*
+   // * Init the host endpoint
+   // */
+   //_host.Init(&_udp, _poll, 0, host_user, NULL);
+   //_host.Synchronize();
 
-   /*
-    * Preload the ROM
-    */
-   _callbacks.begin_game(gamename);
+   ///*
+   // * Preload the ROM
+   // */
+   //_callbacks.begin_game(gamename);
 }
   
 SpectatorBackend::~SpectatorBackend()
@@ -165,7 +164,7 @@ SpectatorBackend::OnUdpProtocolEvent(UdpProtocol::Event &evt)
 }
  
 void
-SpectatorBackend::OnMsg(sockaddr_in &from, UdpMsg *msg, int len)
+SpectatorBackend::OnMsg(EOS_ProductUserId &from, UdpMsg *msg, int len)
 {
    if (_host.HandlesMsg(from, msg)) {
       _host.OnMsg(msg, len);

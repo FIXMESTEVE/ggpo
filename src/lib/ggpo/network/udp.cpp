@@ -7,6 +7,7 @@
 
 #include "types.h"
 #include "udp.h"
+#include <eos_sdk.h>
 
 #define EOS
 
@@ -43,6 +44,8 @@ Udp::Udp() :
    _socket(INVALID_SOCKET),
    _callbacks(NULL)
 {
+    //_hP2P = EOS_Platform_GetP2PInterface();
+    printf("hello");
 }
 
 Udp::~Udp(void)
@@ -54,8 +57,11 @@ Udp::~Udp(void)
 }
 
 void
-Udp::Init(uint16 port, Poll *poll, Callbacks *callbacks)
+Udp::Init(uint16 port, Poll *poll, Callbacks *callbacks, EOS_HPlatform hPlatform, EOS_ProductUserId localProductUserId)
 {
+   _localProductUserId = localProductUserId;
+   _hP2P = EOS_Platform_GetP2PInterface(hPlatform);
+
    _callbacks = callbacks;
 
    _poll = poll;
@@ -66,7 +72,7 @@ Udp::Init(uint16 port, Poll *poll, Callbacks *callbacks)
 }
 
 void
-Udp::SendTo(char *buffer, int len, int flags, EOS_ProductUserId from, EOS_ProductUserId to)
+Udp::SendTo(char *buffer, int len, int flags, EOS_ProductUserId to)
 {
 #if defined(EOS)
     EOS_P2P_SocketId socketId = { EOS_P2P_SOCKETID_API_LATEST, "JAMADAAAAAAAAAAAAAAAAAAAAAAAAAAA" };
@@ -77,7 +83,7 @@ Udp::SendTo(char *buffer, int len, int flags, EOS_ProductUserId from, EOS_Produc
     oSendPacketOptions.Channel = 0;
     oSendPacketOptions.Data = buffer;
     oSendPacketOptions.DataLengthBytes = len;
-    oSendPacketOptions.LocalUserId = from;
+    oSendPacketOptions.LocalUserId = _localProductUserId;
     oSendPacketOptions.Reliability = EOS_EPacketReliability::EOS_PR_UnreliableUnordered;
     oSendPacketOptions.RemoteUserId = to;
     oSendPacketOptions.SocketId = &socketId;
@@ -105,7 +111,19 @@ Udp::OnLoopPoll(void *cookie)
 
    for (;;) {
       recv_addr_len = sizeof(recv_addr);
-      int len = recvfrom(_socket, (char *)recv_buf, MAX_UDP_PACKET_SIZE, 0, (struct sockaddr *)&recv_addr, &recv_addr_len);
+      //int len = recvfrom(_socket, (char *)recv_buf, MAX_UDP_PACKET_SIZE, 0, (struct sockaddr *)&recv_addr, &recv_addr_len);
+      uint32_t len;
+      uint8_t OutChannel;
+
+      EOS_P2P_SocketId OutSocketId = {};
+      EOS_ProductUserId OutPeerId = {};
+      EOS_P2P_ReceivePacketOptions oReceivePacketOptions = {};
+      oReceivePacketOptions.ApiVersion = EOS_P2P_RECEIVEPACKET_API_LATEST;
+      oReceivePacketOptions.LocalUserId = _localProductUserId;
+      oReceivePacketOptions.MaxDataSizeBytes = MAX_UDP_PACKET_SIZE;
+      oReceivePacketOptions.RequestedChannel = 0;
+
+      EOS_P2P_ReceivePacket(_hP2P, &oReceivePacketOptions, &OutPeerId, &OutSocketId, &OutChannel, recv_buf, &len);
 
       // TODO: handle len == 0... indicates a disconnect.
 
@@ -116,10 +134,10 @@ Udp::OnLoopPoll(void *cookie)
          }
          break;
       } else if (len > 0) {
-         char src_ip[1024];
-         Log("recvfrom returned (len:%d  from:%s:%d).\n", len, inet_ntop(AF_INET, (void*)&recv_addr.sin_addr, src_ip, ARRAY_SIZE(src_ip)), ntohs(recv_addr.sin_port) );
+         //char src_ip[1024];
+         //Log("recvfrom returned (len:%d  from:%s:%d).\n", len, inet_ntop(AF_INET, (void*)&recv_addr.sin_addr, src_ip, ARRAY_SIZE(src_ip)), ntohs(recv_addr.sin_port) );
          UdpMsg *msg = (UdpMsg *)recv_buf;
-         _callbacks->OnMsg(recv_addr, msg, len);
+         _callbacks->OnMsg(OutPeerId, msg, len);
       } 
    }
    return true;

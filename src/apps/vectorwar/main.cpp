@@ -17,6 +17,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <string>
 
 #define WIN32_LEAN_AND_MEAN
 
@@ -26,11 +27,14 @@ EOS_HConnect g_EOS_Connect_Handle;
 EOS_HLobby g_EOS_Lobby_Handle;
 EOS_HLobbySearch g_EOS_hLobbySearch;
 EOS_ProductUserId g_EOS_LocalUserId;
+std::string g_EOS_LobbyId;
 bool g_bEOS_Connect_Succeeded = false;
 bool g_bEOS_IsInLobby = false;
 bool g_bEOS_LobbyCreate_Requested = false;
 bool g_bEOS_LobbySearch_Requested = false;
 bool g_bMustCreateLobby = false;
+bool g_bTriedLaunch = false;
+HWND g_hWnd;
 
 void
 _Print_Lobby_Members(EOS_LobbyId lobbyId)
@@ -59,6 +63,42 @@ _Print_Lobby_Members(EOS_LobbyId lobbyId)
         std::wostringstream os2_;
         os2_ << L"User number " << std::to_string(i).c_str() << L", ID: " << userId << std::endl;
         OutputDebugString(os2_.str().c_str());
+
+        if (memberCount > 1 && !g_bTriedLaunch) {
+            //try game launch
+            //        GGPOPlayer players[GGPO_MAX_SPECTATORS + GGPO_MAX_PLAYERS];
+
+   //        int i;
+   //        for (i = 0; i < num_players; i++) {
+   //            const wchar_t* arg = __wargv[offset++];
+
+   //            players[i].size = sizeof(players[i]);
+   //            players[i].player_num = i + 1;
+   //            if (!_wcsicmp(arg, L"local")) {
+   //                players[i].type = GGPO_PLAYERTYPE_LOCAL;
+   //                local_player = i;
+   //                continue;
+   //            }
+
+   //            players[i].type = GGPO_PLAYERTYPE_REMOTE;
+   //            if (swscanf_s(arg, L"%[^:]:%hd", wide_ip_buffer, wide_ip_buffer_size, &players[i].u.remote.port) != 2) {
+   //                Syntax();
+   //                return 1;
+   //            }
+   //            wcstombs_s(nullptr, players[i].u.remote.ip_address, ARRAYSIZE(players[i].u.remote.ip_address), wide_ip_buffer, _TRUNCATE);
+            g_bTriedLaunch = true;
+            GGPOPlayer players[GGPO_MAX_SPECTATORS + GGPO_MAX_PLAYERS];
+            if (userId == g_EOS_LocalUserId) {
+                players[i].size = sizeof(players[i]);
+                players[i].type = GGPO_PLAYERTYPE_LOCAL;
+            }
+            else {
+                players[i].size = sizeof(players[i]);
+                players[i].type = GGPO_PLAYERTYPE_REMOTE;
+                players[i].u.remote._EOS_ProductUserId = userId;
+            }
+            VectorWar_Init(g_hWnd, 0, memberCount, players, 0, g_EOS_LocalUserId, g_EOS_Platform_Handle);
+        }
     }
 
     EOS_LobbyDetails_Info_Release(lobbyDetailsInfo);
@@ -195,11 +235,10 @@ _Execute_EOS_Lobby_CreateLobby()
     EOS_Lobby_CreateLobby(g_EOS_Lobby_Handle, &createLobbyOptions, NULL, [](const EOS_Lobby_CreateLobbyCallbackInfo* info) {
         if (info->ResultCode == EOS_EResult::EOS_Success) {
             g_bEOS_IsInLobby = true;
-
+            g_EOS_LobbyId = std::string(info->LobbyId);
             std::wostringstream os_;
             os_ << L"EOS_Lobby_CreateLobby Result Code: " << std::to_string((int)info->ResultCode).c_str() << std::endl;
             OutputDebugString(os_.str().c_str());
-
 
             EOS_Lobby_UpdateLobbyModificationOptions updateLobbyModificationOptions = {};
             EOS_HLobbyModification hLobbyModification;
@@ -234,6 +273,34 @@ _Execute_EOS_Lobby_CreateLobby()
 }
 
 void
+RunBeforeMainLoop()
+{
+    int start, next, now;
+    start = next = now = timeGetTime();
+
+    while (!g_bTriedLaunch) {
+        now = timeGetTime();
+
+        if (now >= next) {
+            EOS_Platform_Tick(g_EOS_Platform_Handle);
+            if (g_bEOS_Connect_Succeeded) {
+                if (g_bMustCreateLobby && !g_bEOS_IsInLobby && !g_bEOS_LobbyCreate_Requested) {
+                    _Execute_EOS_Lobby_CreateLobby();
+                }
+                else if (!g_bMustCreateLobby && !g_bEOS_LobbySearch_Requested) {
+                    _Execute_EOS_Lobby_Search_And_Join_Lobby();
+                }
+            }
+            next = now + (1000 / 60);
+            if (g_bEOS_IsInLobby) {
+                _Print_Lobby_Members(g_EOS_LobbyId.c_str());
+            }
+            //Sleep(1);
+        }
+    }
+}
+
+void
 RunMainLoop(HWND hwnd)
 {
    MSG msg = { 0 };
@@ -252,14 +319,7 @@ RunMainLoop(HWND hwnd)
       VectorWar_Idle(max(0, next - now - 1));
       if (now >= next) {
          EOS_Platform_Tick(g_EOS_Platform_Handle);
-         if (g_bEOS_Connect_Succeeded) {
-             if (g_bMustCreateLobby && !g_bEOS_IsInLobby && !g_bEOS_LobbyCreate_Requested) {
-                 _Execute_EOS_Lobby_CreateLobby();
-             }
-             else if (!g_bMustCreateLobby && !g_bEOS_LobbySearch_Requested) {
-                 _Execute_EOS_Lobby_Search_And_Join_Lobby();
-             }
-         }
+
          VectorWar_RunFrame(hwnd);
          next = now + (1000 / 60);
       }
@@ -348,6 +408,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_ int)
 {
    HWND hwnd = CreateMainWindow(hInstance);
+   g_hWnd = hwnd;
    //int offset = 1, local_player = 0;
    WSADATA wd = { 0 };
    //wchar_t wide_ip_buffer[128];
@@ -434,7 +495,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
    //        VectorWar_Init(hwnd, local_port, num_players, players, num_spectators);
    //    }
    //}
-
+   RunBeforeMainLoop();
    RunMainLoop(hwnd);
    VectorWar_Exit();
    WSACleanup();
