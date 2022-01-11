@@ -19,6 +19,8 @@
 
 static const int MAX_UDP_PACKET_SIZE = 4096;
 
+//EOS_HP2P _hP2P;
+
 class Udp : public IPollSink
 {
 public:
@@ -33,7 +35,6 @@ public:
       virtual void OnMsg(EOS_ProductUserId &from, UdpMsg *msg, int len) = 0;
    };
 
-   EOS_HP2P _hP2P;
    EOS_ProductUserId _localProductUserId; //TODO: init this somewhere??
 
 protected:
@@ -53,7 +54,8 @@ public:
 
 protected:
    // Network transmission information
-   SOCKET         _socket;
+   //SOCKET         _socket;
+    EOS_P2P_SocketId _socket;
 
    // state management
    Callbacks      *_callbacks;

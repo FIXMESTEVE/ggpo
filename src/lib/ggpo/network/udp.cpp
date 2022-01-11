@@ -11,9 +11,14 @@
 
 #define EOS
 
+EOS_HP2P g_hP2P;
+
 SOCKET
 CreateSocket(uint16 bind_port, int retries)
 {
+   //todo: create the socket id and store it
+   //preemptively accept connections
+
    SOCKET s;
    sockaddr_in sin;
    uint16 port;
@@ -41,42 +46,48 @@ CreateSocket(uint16 bind_port, int retries)
 }
 
 Udp::Udp() :
-   _socket(INVALID_SOCKET),
+   _socket({ EOS_P2P_SOCKETID_API_LATEST, "JAMADAAAAAAAAAAAAAAAAAAAAAAAAAAA" }),
    _callbacks(NULL)
 {
-    //_hP2P = EOS_Platform_GetP2PInterface();
-    printf("hello");
 }
 
 Udp::~Udp(void)
 {
-   if (_socket != INVALID_SOCKET) {
-      closesocket(_socket);
-      _socket = INVALID_SOCKET;
-   }
+    EOS_P2P_CloseConnectionsOptions oCloseConnections = {};
+    oCloseConnections.ApiVersion = EOS_P2P_CLOSECONNECTIONS_API_LATEST;
+    oCloseConnections.LocalUserId = _localProductUserId;
+    oCloseConnections.SocketId = &_socket;
+    EOS_P2P_CloseConnections(g_hP2P, &oCloseConnections);
 }
 
 void
 Udp::Init(uint16 port, Poll *poll, Callbacks *callbacks, EOS_HPlatform hPlatform, EOS_ProductUserId localProductUserId)
 {
    _localProductUserId = localProductUserId;
-   _hP2P = EOS_Platform_GetP2PInterface(hPlatform);
+   g_hP2P = EOS_Platform_GetP2PInterface(hPlatform);
+   EOS_P2P_AddNotifyPeerConnectionRequestOptions oAddNotifyPeerConnectionRequest = {};
+   oAddNotifyPeerConnectionRequest.ApiVersion = EOS_P2P_ADDNOTIFYPEERCONNECTIONREQUEST_API_LATEST;
+   oAddNotifyPeerConnectionRequest.LocalUserId = _localProductUserId;
+   oAddNotifyPeerConnectionRequest.SocketId = &_socket;
+   EOS_P2P_AddNotifyPeerConnectionRequest(g_hP2P, &oAddNotifyPeerConnectionRequest, NULL, [](const EOS_P2P_OnIncomingConnectionRequestInfo* data) {
+       EOS_P2P_AcceptConnectionOptions oAcceptConnection = {};
+       oAcceptConnection.ApiVersion = EOS_P2P_ACCEPTCONNECTION_API_LATEST;
+       oAcceptConnection.LocalUserId = data->LocalUserId;
+       oAcceptConnection.RemoteUserId = data->RemoteUserId;
+       oAcceptConnection.SocketId = data->SocketId;
+       EOS_P2P_AcceptConnection(g_hP2P, &oAcceptConnection);
+   });
 
    _callbacks = callbacks;
 
    _poll = poll;
    _poll->RegisterLoop(this);
-
-   Log("binding udp socket to port %d.\n", port);
-   _socket = CreateSocket(port, 0);
 }
 
 void
 Udp::SendTo(char *buffer, int len, int flags, EOS_ProductUserId to)
 {
 #if defined(EOS)
-    EOS_P2P_SocketId socketId = { EOS_P2P_SOCKETID_API_LATEST, "JAMADAAAAAAAAAAAAAAAAAAAAAAAAAAA" };
-
     EOS_P2P_SendPacketOptions oSendPacketOptions = {};
     oSendPacketOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
     oSendPacketOptions.bAllowDelayedDelivery = false;
@@ -86,8 +97,8 @@ Udp::SendTo(char *buffer, int len, int flags, EOS_ProductUserId to)
     oSendPacketOptions.LocalUserId = _localProductUserId;
     oSendPacketOptions.Reliability = EOS_EPacketReliability::EOS_PR_UnreliableUnordered;
     oSendPacketOptions.RemoteUserId = to;
-    oSendPacketOptions.SocketId = &socketId;
-    EOS_P2P_SendPacket(_hP2P, &oSendPacketOptions);
+    oSendPacketOptions.SocketId = &_socket;
+    EOS_P2P_SendPacket(g_hP2P, &oSendPacketOptions);
 #else
    struct sockaddr_in *to = (struct sockaddr_in *)dst;
 
@@ -123,7 +134,7 @@ Udp::OnLoopPoll(void *cookie)
       oReceivePacketOptions.MaxDataSizeBytes = MAX_UDP_PACKET_SIZE;
       oReceivePacketOptions.RequestedChannel = 0;
 
-      EOS_P2P_ReceivePacket(_hP2P, &oReceivePacketOptions, &OutPeerId, &OutSocketId, &OutChannel, recv_buf, &len);
+      EOS_P2P_ReceivePacket(g_hP2P, &oReceivePacketOptions, &OutPeerId, &OutSocketId, &OutChannel, recv_buf, &len);
 
       // TODO: handle len == 0... indicates a disconnect.
 
