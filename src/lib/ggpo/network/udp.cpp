@@ -46,7 +46,6 @@ CreateSocket(uint16 bind_port, int retries)
 }
 
 Udp::Udp() :
-   _socket({ EOS_P2P_SOCKETID_API_LATEST, "JAMADAAAAAAAAAAAAAAAAAAAAAAAAAAA" }),
    _callbacks(NULL)
 {
 }
@@ -63,6 +62,9 @@ Udp::~Udp(void)
 void
 Udp::Init(uint16 port, Poll *poll, Callbacks *callbacks, EOS_HPlatform hPlatform, EOS_ProductUserId localProductUserId)
 {
+    _socket.ApiVersion = EOS_P2P_SOCKETID_API_LATEST;
+    strncpy_s(_socket.SocketName, "CHAT", 5);
+
    _localProductUserId = localProductUserId;
    g_hP2P = EOS_Platform_GetP2PInterface(hPlatform);
    EOS_P2P_AddNotifyPeerConnectionRequestOptions oAddNotifyPeerConnectionRequest = {};
@@ -90,7 +92,7 @@ Udp::SendTo(char *buffer, int len, int flags, EOS_ProductUserId to)
 #if defined(EOS)
     EOS_P2P_SendPacketOptions oSendPacketOptions = {};
     oSendPacketOptions.ApiVersion = EOS_P2P_SENDPACKET_API_LATEST;
-    oSendPacketOptions.bAllowDelayedDelivery = false;
+    oSendPacketOptions.bAllowDelayedDelivery = EOS_FALSE;
     oSendPacketOptions.Channel = 0;
     oSendPacketOptions.Data = buffer;
     oSendPacketOptions.DataLengthBytes = len;

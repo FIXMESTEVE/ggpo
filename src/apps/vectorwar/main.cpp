@@ -55,6 +55,9 @@ _Print_Lobby_Members(EOS_LobbyId lobbyId)
     getMemberCountOptions.ApiVersion = EOS_LOBBYDETAILS_GETMEMBERCOUNT_API_LATEST;
     uint32_t memberCount = EOS_LobbyDetails_GetMemberCount(lobbyDetails, &getMemberCountOptions);
 
+    bool tryLaunch = false;
+    GGPOPlayer players[GGPO_MAX_SPECTATORS + GGPO_MAX_PLAYERS];
+    
     for (uint32_t i = 0; i < memberCount; i++) {
         EOS_LobbyDetails_GetMemberByIndexOptions getMemberByIndexOptions = {};
         getMemberByIndexOptions.ApiVersion = EOS_LOBBYDETAILS_GETMEMBERBYINDEX_API_LATEST;
@@ -65,6 +68,7 @@ _Print_Lobby_Members(EOS_LobbyId lobbyId)
         OutputDebugString(os2_.str().c_str());
 
         if (memberCount > 1 && !g_bTriedLaunch) {
+            tryLaunch = true;
             //try game launch
             //        GGPOPlayer players[GGPO_MAX_SPECTATORS + GGPO_MAX_PLAYERS];
 
@@ -86,8 +90,6 @@ _Print_Lobby_Members(EOS_LobbyId lobbyId)
    //                return 1;
    //            }
    //            wcstombs_s(nullptr, players[i].u.remote.ip_address, ARRAYSIZE(players[i].u.remote.ip_address), wide_ip_buffer, _TRUNCATE);
-            g_bTriedLaunch = true;
-            GGPOPlayer players[GGPO_MAX_SPECTATORS + GGPO_MAX_PLAYERS];
             if (userId == g_EOS_LocalUserId) {
                 players[i].size = sizeof(players[i]);
                 players[i].type = GGPO_PLAYERTYPE_LOCAL;
@@ -97,8 +99,13 @@ _Print_Lobby_Members(EOS_LobbyId lobbyId)
                 players[i].type = GGPO_PLAYERTYPE_REMOTE;
                 players[i].u.remote._EOS_ProductUserId = userId;
             }
-            VectorWar_Init(g_hWnd, 0, memberCount, players, 0, g_EOS_LocalUserId, g_EOS_Platform_Handle);
         }
+    }
+
+
+    if (tryLaunch) {
+        g_bTriedLaunch = true;
+        VectorWar_Init(g_hWnd, 0, memberCount, players, 0, g_EOS_LocalUserId, g_EOS_Platform_Handle);
     }
 
     EOS_LobbyDetails_Info_Release(lobbyDetailsInfo);
