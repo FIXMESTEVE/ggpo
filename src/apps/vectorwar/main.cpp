@@ -36,6 +36,8 @@ bool g_bMustCreateLobby = false;
 bool g_bTriedLaunch = false;
 HWND g_hWnd;
 
+GGPOPlayer players[GGPO_MAX_SPECTATORS + GGPO_MAX_PLAYERS];
+
 void
 _Print_Lobby_Members(EOS_LobbyId lobbyId)
 {
@@ -56,7 +58,6 @@ _Print_Lobby_Members(EOS_LobbyId lobbyId)
     uint32_t memberCount = EOS_LobbyDetails_GetMemberCount(lobbyDetails, &getMemberCountOptions);
 
     bool tryLaunch = false;
-    GGPOPlayer players[GGPO_MAX_SPECTATORS + GGPO_MAX_PLAYERS];
     
     for (uint32_t i = 0; i < memberCount; i++) {
         EOS_LobbyDetails_GetMemberByIndexOptions getMemberByIndexOptions = {};
@@ -93,11 +94,13 @@ _Print_Lobby_Members(EOS_LobbyId lobbyId)
             if (userId == g_EOS_LocalUserId) {
                 players[i].size = sizeof(players[i]);
                 players[i].type = GGPO_PLAYERTYPE_LOCAL;
+                players[i].player_num = 2;
             }
             else {
                 players[i].size = sizeof(players[i]);
                 players[i].type = GGPO_PLAYERTYPE_REMOTE;
                 players[i].u.remote._EOS_ProductUserId = userId;
+                players[i].player_num = 1;
             }
         }
     }
