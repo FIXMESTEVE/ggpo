@@ -6,6 +6,22 @@
 #include "vectorwar.h"
 #include "ggpo_perfmon.h"
 
+FILE* fDummy;
+void RedirectIOToConsole()
+{
+    //Alloc Console
+//print some stuff to the console
+//make sure to include #include "stdio.h"
+//note, you must use the #include <iostream>/ using namespace std
+//to use the iostream... #incldue "iostream.h" didn't seem to work
+//in my VC 6
+    AllocConsole();
+    freopen_s(&fDummy, "conin$", "r", stdin);
+    freopen_s(&fDummy, "conout$", "w", stdout);
+    freopen_s(&fDummy, "conout$", "w", stderr);
+    printf("Debugging Window:\n");
+}
+
 LRESULT CALLBACK
 MainWindowProc(HWND hwnd,
                UINT uMsg,
@@ -99,6 +115,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_ LPWSTR,
     _In_ int)
 {
+   RedirectIOToConsole();
+
    HWND hwnd = CreateMainWindow(hInstance);
    int offset = 1, local_player = 0;
    WSADATA wd = { 0 };
