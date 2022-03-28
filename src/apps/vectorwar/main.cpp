@@ -6,6 +6,7 @@
 #include "vectorwar.h"
 #include "ggpo_perfmon.h"
 #include "my_eos_utils.h"
+#include "my_eos_platform.h"
 
 void RedirectIOToConsole()
 {
@@ -79,6 +80,7 @@ RunMainLoop(HWND hwnd)
 
    start = next = now = timeGetTime();
    while(1) {
+      FPlatform::Update();
       while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
          TranslateMessage(&msg); 
          DispatchMessage(&msg);
