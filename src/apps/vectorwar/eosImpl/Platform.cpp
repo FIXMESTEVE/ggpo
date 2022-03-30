@@ -1,7 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 #include <string>
 
-#include "my_eos_platform.h"
+#include "Platform.h"
 
 #if ALLOW_RESERVED_PLATFORM_OPTIONS
 #include "ReservedPlatformOptions.h"

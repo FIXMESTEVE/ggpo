@@ -5,8 +5,8 @@
 #endif
 #include "vectorwar.h"
 #include "ggpo_perfmon.h"
-#include "my_eos_utils.h"
-#include "my_eos_platform.h"
+#include "eosImpl/my_eos_utils.h"
+#include "eosImpl/Platform.h"
 
 void RedirectIOToConsole()
 {
@@ -111,7 +111,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_ int)
 {
    RedirectIOToConsole();
-   _EOS_InitPlatform();
+   if (_EOS_InitPlatform()) {
+       _EOS_Login();
+   }
 
    HWND hwnd = CreateMainWindow(hInstance);
    int offset = 1, local_player = 0;

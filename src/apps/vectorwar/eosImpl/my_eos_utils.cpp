@@ -2,7 +2,7 @@
 #include <iostream>
 
 #include "my_eos_utils.h"
-#include "my_eos_platform.h"
+#include "Platform.h"
 
 #include "eos_init.h"
 #include "eos_logging.h"
@@ -19,7 +19,7 @@ void EOS_CALL _EOSSDKLoggingCallback(const EOS_LogMessage* InMsg)
 	std::cout << "[EOS SDK] " << InMsg->Category << ": " << InMsg->Message << std::endl;
 }
 
-void _EOS_InitPlatform()
+bool _EOS_InitPlatform()
 {
 	printf("[EOS SDK] Initializing ...\n");
 
@@ -39,7 +39,7 @@ void _EOS_InitPlatform()
 	if (InitResult != EOS_EResult::EOS_Success)
 	{
 		printf("[EOS SDK] Init Failed!\n");
-		return;
+		return false;
 	}
 
 	printf("[EOS SDK] Initialized. Setting Logging Callback ...\n");
@@ -59,4 +59,10 @@ void _EOS_InitPlatform()
 	{
 		printf("[EOS SDK] Platform Create failed ...\n");
 	}
+
+	return InitResult == EOS_EResult::EOS_Success;
+}
+
+void _EOS_Login() {
+
 }
