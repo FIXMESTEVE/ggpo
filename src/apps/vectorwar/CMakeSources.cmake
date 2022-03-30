@@ -1,10 +1,14 @@
 set(EOS_SDK_IMPL_INC
 	"eosImpl/Platform.h"
+	"eosImpl/Authentication.h"
+	"eosImpl/pch.h"
 	"eosImpl/my_eos_utils.h"
 )
 
 set(EOS_SDK_IMPL_SRC
 	"eosImpl/Platform.cpp"
+	"eosImpl/Authentication.cpp"
+	"eosImpl/pch.cpp"
 	"eosImpl/my_eos_utils.cpp"
 )
 
